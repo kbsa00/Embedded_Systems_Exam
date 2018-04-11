@@ -1,4 +1,3 @@
-
 // This #include statement was automatically added by the Particle IDE.
 #include <HC-SR04.h>
 
@@ -23,7 +22,7 @@ HC_SR04 moveSensor = HC_SR04(TRIGGER, ECHO);
 
 unsigned long thisTime;
 unsigned long lastTime;
-bool isSystem = true; 
+bool isSystem; 
 
 
 int lastPausebuttonPressed = 0;
@@ -38,8 +37,8 @@ void setup() {
     lastTime  = millis();
     pinMode(pauseSystemButton, INPUT); 
     pinMode(turnOnOffSystemButton, INPUT); 
-    
-    
+    Particle.function("Power System", TurnOnOrOffSystem);
+    Particle.function("Pause System", pauseHomeWatcherFromPhone); 
 }
 
 void loop() {
@@ -51,12 +50,14 @@ void loop() {
     }
 
     if(turnOnOfSystemState == HIGH && lastTurnOfOnSystemPressed == LOW){
-        Particle.publish("BTN", "PRESSED"); 
+        
         //Turning on and off the System based on it's current state. 
         if(isSystem != true){
+            Particle.publish("SystemNotifier", "Watch-Homer is now Turned ON"); 
             isSystem = true;
         }else{
-            isSystem = false; 
+            Particle.publish("SystemNotifier", "Watch-Homer is now Turned OFF"); 
+            isSystem = false;
         }
         
     }
@@ -100,7 +101,7 @@ void HomeWatcherSystem(){
     }
     
     if (pauseButtonState == HIGH && lastPausebuttonPressed == LOW ){
-        Particle.publish("AlarmNotifier", "The alarm was now turned off for 60 seconds! HURRY UP leaving the Student complex");
+        Particle.publish("SystemNotifier", "The alarm was now turned off for 60 seconds! HURRY UP leaving the Student complex");
        // PauseTheHomeWatcher();   
     }
     
@@ -123,4 +124,36 @@ void PauseTheHomeWatcher(){
         delay(1000);
         index++; 
     }
+}
+
+//From the phone
+int TurnOnOrOffSystem(String command){
+    
+    if(command == "on"){
+        Particle.publish("SystemNotifier", "Watch-Homer is now Turned OFF"); 
+        isSystem = true; 
+    }
+    else if(command == "off"){
+        Particle.publish("SystemNotifier", "Watch-Homer is now Turned OFF"); 
+        isSystem = false; 
+    }
+    
+}
+
+//from the phone..
+int pauseHomeWatcherFromPhone(String amount){
+                
+    int index = atoi(amount.c_str());
+    
+    if(index == NULL){
+        index = 30; 
+    }
+    
+    while(index >= 0){
+        
+        tone(buzzerOne, 2000, 500); 
+        delay(1000);
+        index--; 
+    }
+
 }
