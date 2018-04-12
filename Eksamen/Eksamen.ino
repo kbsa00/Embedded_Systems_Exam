@@ -1,3 +1,6 @@
+// This #include statement was automatically added by the Particle IDE.
+#include <SparkTime.h>
+
 
 // This #include statement was automatically added by the Particle IDE.
 #include <HC-SR04.h>
@@ -20,7 +23,8 @@
 DHT dht(DHTPIN, DHTTYPE);
 
 HC_SR04 moveSensor = HC_SR04(TRIGGER, ECHO);
-
+SparkTime rtc;
+UDP UDPClient; 
 
 unsigned long thisTime;
 unsigned long lastTime;
@@ -31,32 +35,43 @@ int pauseButtonState = 0;
 int turnOnOfSystemState = 0; 
 int lastTurnOfOnSystemPressed = 0; 
 
+/**
+ * Setting up everything from buttons, leds and sensors. 
+ */
 
 void setup() {
     dht.begin();
+    rtc.begin(&UDPClient, "no.pool.ntp.org");
+    rtc.setTimeZone(+1);
+    
     moveSensor.init();
     lastTime  = millis();
     pinMode(redpin, OUTPUT); 
     pinMode(greenpin, OUTPUT); 
     pinMode(bluepin, OUTPUT); 
     
+    
     pinMode(pauseSystemButton, INPUT); 
     pinMode(turnOnOffSystemButton, INPUT); 
     Particle.function("updatesystem", TurnOnOrOffSystem);
-    Particle.function("Pause System", pauseHomeWatcherFromPhone); 
 }
 
 void loop() {
     
     turnOnOfSystemState = digitalRead(turnOnOffSystemButton);
     
+    //Checking wheather the whole system is on, If it is, it will keep on checking the sensors until someone
+    //turns of the system.
     if(isSystem){
         digitalWrite(redpin, 0);
         digitalWrite(greenpin, 255);
         HomeWatcherSystem(); 
 
     }
-
+    
+    
+    
+    //Handling the on and off button for the System.
     if(turnOnOfSystemState == HIGH && lastTurnOfOnSystemPressed == LOW){
         
         //Turning on and off the System based on it's current state. 
@@ -70,17 +85,19 @@ void loop() {
             isSystem = false;
              digitalWrite(greenpin, 0);
             digitalWrite(redpin, 255);
-            
         }
-        
     }
     
     lastTurnOfOnSystemPressed = turnOnOfSystemState;
-    
-  
 }
 
 
+/**
+ * This is just an entire method for how the Home Watcher System works. 
+ * It will constantly check if theres any movement. If theres a movement the method will then 
+ * procede to let the owner know that there's movement in the apartment.
+ * This method will also allow the user to press a button where you only have 30 seconds to get out.
+ */ 
 void HomeWatcherSystem(){
     
      thisTime = millis();
@@ -104,7 +121,10 @@ void HomeWatcherSystem(){
         
         if(avgCm < 20)
         {
-          Particle.publish("Notifier", "Home-Watcher picked up on movement in your apartment!!");
+          int nowTime = rtc.now(); 
+          String TimeStamp = String(rtc.hour(nowTime)) + ":" + String(rtc.minute(nowTime)); 
+          
+          Particle.publish("Notifier", "Home-Watcher picked up on movement in your apartment!! AT THIS TIME STAMP: " + TimeStamp);
           digitalWrite(greenpin, 0);
           soundTheAlarm();  
         }
@@ -121,25 +141,30 @@ void HomeWatcherSystem(){
     lastPausebuttonPressed = pauseButtonState; 
 }
 
-
+/**
+ * This is just a simple method that alerts the user of the current temperature and humidity of the 
+ * room. The alert will happend only on specified hours of the day!
+ */
 
 void checkRoomsCondition(){
     //Checking the rooms condition, Temprature etc. 
-    
-    int static lastHour = 24; 
-    int currentHour = Time.hour(); 
-    
-    if (lastHour != currentHour && currentHour == 16 || lastHour != currentHour && currentHour == 13 || lastHour != currentHour && currentHour == 20){
+    int lastHour = 0; 
+    int currentHour = rtc.now();
+
+    if (lastHour != currentHour && rtc.hour(currentHour) == 10 || lastHour != currentHour && rtc.hour(currentHour) == 20){
         String temp = String(dht.getTempCelcius());
         String humidity = String(dht.getHumidity());
         Particle.publish("TempAlert", "Your Student Complex information: Temprature: " + temp + "C" + " Humidity " + humidity + "%" );
+        lastHour = currentHour; 
     }
-    
-    lastHour = currentHour; 
+
     
 }
 
 
+/**
+ * Simple method for an alarm when people are moving around in the apartment
+ */
 
 void soundTheAlarm(){
     
@@ -147,10 +172,17 @@ void soundTheAlarm(){
     digitalWrite(bluepin, 255);
     tone(buzzerOne, 2000, 5000);
     delay(1000);
+    tone(buzzerOne, 2000, 5000);
+    delay(1000);
     digitalWrite(redpin, 0);
     digitalWrite(bluepin, 0);
+
 }
 
+
+/**
+ * Simple method that pauses the entire Home Watcher System.
+ */
 
 void PauseTheHomeWatcher(){
     
@@ -169,7 +201,9 @@ void PauseTheHomeWatcher(){
     }
 }
 
-//From the phone
+/**
+ * Simple method that allows the user to send commands from their phone for turning off the Home Watcher System.
+ */
 int TurnOnOrOffSystem(String command){
     
     if(command == "on"){
@@ -181,23 +215,5 @@ int TurnOnOrOffSystem(String command){
         isSystem = false;
          digitalWrite(greenpin, 0);
          digitalWrite(redpin, 255);
-    }
-    
-}
-
-//from the phone..
-int pauseHomeWatcherFromPhone(String amount){
-                
-    int index = atoi(amount.c_str());
-    
-    if(index == NULL){
-        index = 30; 
-    }
-    
-    while(index >= 0){
-        
-        tone(buzzerOne, 2000, 500); 
-        delay(1000);
-        index--; 
     }
 }
