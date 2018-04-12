@@ -1,3 +1,4 @@
+
 // This #include statement was automatically added by the Particle IDE.
 #include <HC-SR04.h>
 
@@ -12,8 +13,9 @@
 #define buzzerOne D2
 #define pauseSystemButton  D3
 #define turnOnOffSystemButton D4
-
-
+#define redpin D5
+#define greenpin D6
+#define bluepin D7
 
 DHT dht(DHTPIN, DHTTYPE);
 
@@ -23,7 +25,6 @@ HC_SR04 moveSensor = HC_SR04(TRIGGER, ECHO);
 unsigned long thisTime;
 unsigned long lastTime;
 bool isSystem; 
-
 
 int lastPausebuttonPressed = 0;
 int pauseButtonState = 0;
@@ -35,9 +36,13 @@ void setup() {
     dht.begin();
     moveSensor.init();
     lastTime  = millis();
+    pinMode(redpin, OUTPUT); 
+    pinMode(greenpin, OUTPUT); 
+    pinMode(bluepin, OUTPUT); 
+    
     pinMode(pauseSystemButton, INPUT); 
     pinMode(turnOnOffSystemButton, INPUT); 
-    Particle.function("Power System", TurnOnOrOffSystem);
+    Particle.function("updatesystem", TurnOnOrOffSystem);
     Particle.function("Pause System", pauseHomeWatcherFromPhone); 
 }
 
@@ -46,7 +51,10 @@ void loop() {
     turnOnOfSystemState = digitalRead(turnOnOffSystemButton);
     
     if(isSystem){
+        digitalWrite(redpin, 0);
+        digitalWrite(greenpin, 255);
         HomeWatcherSystem(); 
+
     }
 
     if(turnOnOfSystemState == HIGH && lastTurnOfOnSystemPressed == LOW){
@@ -55,9 +63,14 @@ void loop() {
         if(isSystem != true){
             Particle.publish("SystemNotifier", "Watch-Homer is now Turned ON"); 
             isSystem = true;
+            digitalWrite(redpin, 0);
+            digitalWrite(greenpin, 255);
         }else{
             Particle.publish("SystemNotifier", "Watch-Homer is now Turned OFF"); 
             isSystem = false;
+             digitalWrite(greenpin, 0);
+            digitalWrite(redpin, 255);
+            
         }
         
     }
@@ -74,10 +87,8 @@ void HomeWatcherSystem(){
     
     pauseButtonState = digitalRead(pauseSystemButton); 
     
-    if(thisTime - lastTime > 100000){
-        String temp = String(dht.getTempCelcius());
-        Particle.publish("Notifier", temp);
-    }
+    checkRoomsCondition(); 
+     
     
     if(thisTime - lastTime > 2000){
         float cm[10];
@@ -94,23 +105,50 @@ void HomeWatcherSystem(){
         if(avgCm < 20)
         {
           Particle.publish("Notifier", "Home-Watcher picked up on movement in your apartment!!");
-          //soundTheAlarm();  
+          digitalWrite(greenpin, 0);
+          soundTheAlarm();  
         }
         
         lastTime = millis();
     }
     
     if (pauseButtonState == HIGH && lastPausebuttonPressed == LOW ){
-        Particle.publish("SystemNotifier", "The alarm was now turned off for 60 seconds! HURRY UP leaving the Student complex");
-       // PauseTheHomeWatcher();   
+        Particle.publish("SystemNotifier", "The alarm was now turned off for 30 seconds! HURRY UP leaving the Student complex");
+        digitalWrite(greenpin, 0);
+        PauseTheHomeWatcher();   
     }
     
     lastPausebuttonPressed = pauseButtonState; 
 }
 
 
+
+void checkRoomsCondition(){
+    //Checking the rooms condition, Temprature etc. 
+    
+    int static lastHour = 24; 
+    int currentHour = Time.hour(); 
+    
+    if (lastHour != currentHour && currentHour == 16 || lastHour != currentHour && currentHour == 13 || lastHour != currentHour && currentHour == 20){
+        String temp = String(dht.getTempCelcius());
+        String humidity = String(dht.getHumidity());
+        Particle.publish("TempAlert", "Your Student Complex information: Temprature: " + temp + "C" + " Humidity " + humidity + "%" );
+    }
+    
+    lastHour = currentHour; 
+    
+}
+
+
+
 void soundTheAlarm(){
+    
+    digitalWrite(redpin, 255);
+    digitalWrite(bluepin, 255);
     tone(buzzerOne, 2000, 5000);
+    delay(1000);
+    digitalWrite(redpin, 0);
+    digitalWrite(bluepin, 0);
 }
 
 
@@ -120,8 +158,13 @@ void PauseTheHomeWatcher(){
     
     while(index <= 30){
         
+        digitalWrite(redpin, 255);
+        delay(500);
         tone(buzzerOne, 2000, 500); 
-        delay(1000);
+        delay(500);
+        digitalWrite(redpin, 0);
+        
+  
         index++; 
     }
 }
@@ -130,12 +173,14 @@ void PauseTheHomeWatcher(){
 int TurnOnOrOffSystem(String command){
     
     if(command == "on"){
-        Particle.publish("SystemNotifier", "Watch-Homer is now Turned OFF"); 
+        digitalWrite(redpin, 0);
+        digitalWrite(greenpin, 255);
         isSystem = true; 
     }
     else if(command == "off"){
-        Particle.publish("SystemNotifier", "Watch-Homer is now Turned OFF"); 
-        isSystem = false; 
+        isSystem = false;
+         digitalWrite(greenpin, 0);
+         digitalWrite(redpin, 255);
     }
     
 }
@@ -155,5 +200,4 @@ int pauseHomeWatcherFromPhone(String amount){
         delay(1000);
         index--; 
     }
-
 }
