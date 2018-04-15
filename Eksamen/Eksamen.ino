@@ -29,6 +29,7 @@ UDP UDPClient;
 unsigned long thisTime;
 unsigned long lastTime;
 bool isSystem; 
+bool sentTempInfo; 
 
 int lastPausebuttonPressed = 0;
 int pauseButtonState = 0;
@@ -44,6 +45,7 @@ void setup() {
     rtc.begin(&UDPClient, "no.pool.ntp.org");
     rtc.setTimeZone(+1);
     
+    sentTempInfo = false; 
     moveSensor.init();
     lastTime  = millis();
     pinMode(redpin, OUTPUT); 
@@ -54,6 +56,7 @@ void setup() {
     pinMode(pauseSystemButton, INPUT); 
     pinMode(turnOnOffSystemButton, INPUT); 
     Particle.function("updatesystem", TurnOnOrOffSystem);
+    Particle.function("gettemp", getInstanceTempratureAndHumidity);
 }
 
 void loop() {
@@ -108,21 +111,33 @@ void HomeWatcherSystem(){
      
     
     if(thisTime - lastTime > 2000){
-        float cm[10];
-        float avgCm; 
+       // float cm[10];
+     //    float avgCm; 
         
-        for(int i = 0; i < 10; i++)
-        {
-            cm[i] =  moveSensor.distCM();
-            avgCm += cm[i];
-        }
+    //    for(int i = 0; i < 10; i++)
+      //  {
+        //    cm[i] =  moveSensor.distCM();
+        //    avgCm += cm[i];
+    //    }
         
-        avgCm /= 10.0;
-        
-        if(avgCm < 20)
+      //  avgCm /= 10.0;
+      digitalWrite(TRIGGER, LOW);
+      delayMicroseconds(2);
+      digitalWrite(TRIGGER, HIGH);
+      delayMicroseconds(10);
+      
+      long duration = pulseIn(ECHO, HIGH); 
+      int distance = duration * 0.034/2; 
+      
+      if(distance < 20)
         {
           int nowTime = rtc.now(); 
-          String TimeStamp = String(rtc.hour(nowTime)) + ":" + String(rtc.minute(nowTime)); 
+          String TimeStamp;
+          if(rtc.minute(nowTime) < 10){
+             TimeStamp = String(rtc.hour(nowTime)) + " : 0" + String(rtc.minute(nowTime)); 
+          }else{
+             TimeStamp = String(rtc.hour(nowTime)) + " : " + String(rtc.minute(nowTime));    
+          }
           
           Particle.publish("Notifier", "Home-Watcher picked up on movement in your apartment!! AT THIS TIME STAMP: " + TimeStamp);
           digitalWrite(greenpin, 0);
@@ -151,7 +166,8 @@ void checkRoomsCondition(){
     int lastHour = 0; 
     int currentHour = rtc.now();
 
-    if (lastHour != currentHour && rtc.hour(currentHour) == 10 || lastHour != currentHour && rtc.hour(currentHour) == 20){
+    if (lastHour != currentHour && rtc.hour(currentHour) == 10 || lastHour != currentHour && rtc.hour(currentHour) == 20 && sentTempInfo == false){
+        sentTempInfo = true; 
         String temp = String(dht.getTempCelcius());
         String humidity = String(dht.getHumidity());
         Particle.publish("TempAlert", "Your Student Complex information: Temprature: " + temp + "C" + " Humidity " + humidity + "%" );
@@ -215,5 +231,14 @@ int TurnOnOrOffSystem(String command){
         isSystem = false;
          digitalWrite(greenpin, 0);
          digitalWrite(redpin, 255);
+    }
+}
+
+int getInstanceTempratureAndHumidity(String command){
+        
+    if(command == "now"){
+      String temp = String(dht.getTempCelcius());
+      String humidity = String(dht.getHumidity());
+      Particle.publish("TempAlert", "Your Student Complex information: Temprature: " + temp + "C" + " Humidity " + humidity + "%" );
     }
 }
