@@ -28,7 +28,7 @@ UDP UDPClient;
 
 unsigned long thisTime;
 unsigned long lastTime;
-bool isSystem; 
+bool isSystem = false;  
 bool sentTempInfo; 
 
 int lastPausebuttonPressed = 0;
@@ -57,6 +57,7 @@ void setup() {
     pinMode(turnOnOffSystemButton, INPUT); 
     Particle.function("updatesystem", TurnOnOrOffSystem);
     Particle.function("gettemp", getInstanceTempratureAndHumidity);
+    digitalWrite(redpin, 255);
 }
 
 void loop() {
@@ -111,16 +112,7 @@ void HomeWatcherSystem(){
      
     
     if(thisTime - lastTime > 2000){
-       // float cm[10];
-     //    float avgCm; 
-        
-    //    for(int i = 0; i < 10; i++)
-      //  {
-        //    cm[i] =  moveSensor.distCM();
-        //    avgCm += cm[i];
-    //    }
-        
-      //  avgCm /= 10.0;
+ 
       digitalWrite(TRIGGER, LOW);
       delayMicroseconds(2);
       digitalWrite(TRIGGER, HIGH);
@@ -129,7 +121,7 @@ void HomeWatcherSystem(){
       long duration = pulseIn(ECHO, HIGH); 
       int distance = duration * 0.034/2; 
       
-      if(distance < 20)
+      if(distance < 100)
         {
           int nowTime = rtc.now(); 
           String TimeStamp;
@@ -168,9 +160,9 @@ void checkRoomsCondition(){
 
     if (lastHour != currentHour && rtc.hour(currentHour) == 10 || lastHour != currentHour && rtc.hour(currentHour) == 20 && sentTempInfo == false){
         sentTempInfo = true; 
-        String temp = String(dht.getTempCelcius());
-        String humidity = String(dht.getHumidity());
-        Particle.publish("TempAlert", "Your Student Complex information: Temprature: " + temp + "C" + " Humidity " + humidity + "%" );
+        int temp = dht.getTempCelcius();
+        int humidity = dht.getHumidity();
+        Particle.publish("TempAlert", "Your Student Complex information: Temprature: " + String(temp) + " Cs " + " Humidity " + String(humidity) + "%" );
         lastHour = currentHour; 
     }
 
@@ -237,8 +229,8 @@ int TurnOnOrOffSystem(String command){
 int getInstanceTempratureAndHumidity(String command){
         
     if(command == "now"){
-      String temp = String(dht.getTempCelcius());
-      String humidity = String(dht.getHumidity());
-      Particle.publish("TempAlert", "Your Student Complex information: Temprature: " + temp + "C" + " Humidity " + humidity + "%" );
+      int temp = dht.getTempCelcius();
+      int humidity = dht.getHumidity();
+      Particle.publish("TempAlert", "Your Student Complex information: Temprature: " + String(temp) + " ºC " + " Humidity " + String(humidity) + "%" );
     }
 }
