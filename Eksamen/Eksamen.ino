@@ -37,7 +37,7 @@ int turnOnOfSystemState = 0;
 int lastTurnOfOnSystemPressed = 0; 
 
 /**
- * Setting up everything from buttons, leds and sensors. 
+ * Setting up everything from buttons, leds, sensors and timeZone 
  */
 
 void setup() {
@@ -60,6 +60,12 @@ void setup() {
     digitalWrite(redpin, 255);
 }
 
+
+/**
+ * A simple loop that always checks if the system is on or not. 
+ * If the system is on it starts monitoring the sensors.
+ */
+ 
 void loop() {
     
     turnOnOfSystemState = digitalRead(turnOnOffSystemButton);
@@ -112,7 +118,9 @@ void HomeWatcherSystem(){
      
     
     if(thisTime - lastTime > 2000){
- 
+    
+      //Checking the UltraSonic Sensor if theres any movement.
+      
       digitalWrite(TRIGGER, LOW);
       delayMicroseconds(2);
       digitalWrite(TRIGGER, HIGH);
@@ -158,11 +166,11 @@ void checkRoomsCondition(){
     int lastHour = 0; 
     int currentHour = rtc.now();
 
-    if (lastHour != currentHour && rtc.hour(currentHour) == 10 || lastHour != currentHour && rtc.hour(currentHour) == 20 && sentTempInfo == false){
+    if (lastHour != currentHour && rtc.hour(currentHour) == 10 && sentTempInfo == false){
         sentTempInfo = true; 
         int temp = dht.getTempCelcius();
         int humidity = dht.getHumidity();
-        Particle.publish("TempAlert", "Your Student Complex information: Temprature: " + String(temp) + " Cs " + " Humidity " + String(humidity) + "%" );
+        Particle.publish("TempAlert", "Your Student Complex information: Temprature: " + String(temp) + " ºC " + " Humidity " + String(humidity) + "%" );
         lastHour = currentHour; 
     }
 
@@ -171,7 +179,7 @@ void checkRoomsCondition(){
 
 
 /**
- * Simple method for an alarm when people are moving around in the apartment
+ * Simple method for an alarm when people are moving around in the apartment.
  */
 
 void soundTheAlarm(){
@@ -214,18 +222,24 @@ void PauseTheHomeWatcher(){
  */
 int TurnOnOrOffSystem(String command){
     
-    if(command == "on"){
+    if(command.toLowerCase() == "on"){
+        Particle.publish("SystemNotifier", "Watch-Homer is now Turned ON");
         digitalWrite(redpin, 0);
         digitalWrite(greenpin, 255);
         isSystem = true; 
     }
-    else if(command == "off"){
-        isSystem = false;
+    else if(command.toLowerCase() == "off"){
+         Particle.publish("SystemNotifier", "Watch-Homer is now Turned OFF");
+         isSystem = false;
          digitalWrite(greenpin, 0);
          digitalWrite(redpin, 255);
     }
 }
 
+/**
+ * Simple method that allows the user to send commands from their phone. This method will then
+ * send a message to the user on their current room temperature and humidity
+ */
 int getInstanceTempratureAndHumidity(String command){
         
     if(command == "now"){
