@@ -20,7 +20,7 @@ You have also the opertunity of turning of the alarm system through your phone o
 It also has a LED light that indicates if the system is on or not. I have also created a feature where you pause the system for
 30 seconds. After these 30 seconds the alarm will then turn it self on again. 
 
-Using the DHT11-sensor (Tempratur and humidity) I have also programmed the HomeWatcher to send you status on the tempratur and humidity 
+Using the DHT11-sensor (Tempratur and humidity) I have programmed the HomeWatcher to send you status on the tempratur and humidity 
 for your studentdorm room 
 
 **** 
